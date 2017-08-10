@@ -1,18 +1,16 @@
-package com.example.mm.myapplication
+package com.example.rxjava2
 
 import io.reactivex.Flowable
 import io.reactivex.FlowableSubscriber
 import io.reactivex.schedulers.Schedulers
 import org.reactivestreams.Subscription
+import java.util.concurrent.Semaphore
 
-/**
- * Created by mm on 10/08/2017.
- */
 fun main(args: Array<String>) {
-
+    val semaphore = Semaphore(0)
     val nonRx = object {
         val worker = Schedulers.computation().createWorker()
-        val arr: List<Int> = (1..500).map { it }
+        val arr: List<Int> = (1..20).map { it }
         var i: Long = 0
         lateinit var listener: (Int) -> Unit
 
@@ -21,12 +19,11 @@ fun main(args: Array<String>) {
                 (i until arr.size.toLong().coerceAtMost(it))
                         .map(Long::toInt)
                         .forEach { arr[it].let(listener) }
-            }
+            } else semaphore.release()
         }.let {}
 
         fun cancel() = Unit
     }
-
 
     Flowable.fromPublisher<Int> {
         nonRx.listener = it::onNext
@@ -59,7 +56,8 @@ fun main(args: Array<String>) {
         }
 
         override fun onError(t: Throwable?) {
-            t!!.printStackTrace()
+            t?.printStackTrace()
         }
     })
+    semaphore.acquire()
 }
